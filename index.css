@@ -1,0 +1,47 @@
+  .board-row:after {
+    clear: both;
+    content: "";
+    display: table;
+  }
+  
+  .square {
+    position: relative;
+    background: #fff;
+    border: 1px solid #999;
+    float: left;
+    font-size: 24px;
+    font-weight: bold;
+    line-height: 34px;
+    height: 150px;
+    padding: 0;
+    text-align: center;
+    width: 150px;
+  }
+
+  .square-image {
+    height: 150px;
+    width: auto;
+  }
+
+  .promotion-image {
+    position:absolute;
+    height: 75px;
+    width: auto;
+  }
+
+  .game-win {
+    background-color: lightgrey;
+    width: 200px;
+    border: 15px solid green;
+    padding: 25px;
+    margin: 20px;
+  }
+
+  .game-lose {
+    background-color: lightgrey;
+    width: 200px;
+    border: 15px solid red;
+    padding: 25px;
+    margin: 20px;  
+  }
+  
