@@ -6,7 +6,7 @@ let squares=Array(64).fill(null);
 
 cacheDOMElements();
 
-squares[0]={piece: "r",player: {color:"b"}};
+squares[0]={piece: "r",player: {color:"b"},type:"right",hasMoved:false};
 squares[1]={piece: "k",player: {color:"b"}};
 squares[2]={piece: "b",player: {color:"b"}};
 squares[3]={piece: "q",player: {color:"b"}};
@@ -30,14 +30,14 @@ squares[52]={piece: "p",player: {color:"w"}};
 squares[53]={piece: "p",player: {color:"w"}};
 squares[54]={piece: "p",player: {color:"w"}};
 squares[55]={piece: "p",player: {color:"w"}};
-squares[56]={piece: "r",player: {color:"w"}};
+squares[56]={piece: "r",player: {color:"w"},type:"right",hasMoved:false};
 squares[57]={piece: "k",player: {color:"w"}};
 squares[58]={piece: "b",player: {color:"w"}};
 squares[59]={piece: "q",player: {color:"w"}};
-squares[60]={piece: "x",player: {color:"w"}};
+squares[60]={piece: "x",player: {color:"w"},hasMoved:false};
 squares[61]={piece: "b",player: {color:"w"}};
 squares[62]={piece: "k",player: {color:"w"}};
-squares[63]={piece: "r",player: {color:"w"}};
+squares[63]={piece: "r",player: {color:"w"},type:"right",hasMoved:false};
 
 let htmlString="";
 htmlString=htmlString.concat(`<div class="board-row">`);
@@ -63,6 +63,7 @@ htmlString=htmlString.concat("</div>");
 boardElement.innerHTML = htmlString;
 
 let moves=null;
+let castleMoves=null;
 let selected=null;
 let boardRows=8;
 let boardCols=8;
@@ -73,6 +74,11 @@ let turn="w";
 let en_passant=null;
 king_pos.set("b",4);
 king_pos.set("w",60);
+let whiteCheck=null;
+let blackCheck=null;
+let whiteCheckmate=null;
+let blackCheckmate=null;
+let lastMove=null;
 
 for(let i=0;i<64;i++){
   document.getElementById(`square${i}`).onclick=(e => {
@@ -105,9 +111,51 @@ function handleClick(i){
       return;
     }
     selected=i;
-    moves=calculateMoves(squares,i,true);
+    castleMoves=calculateCastleMoves(squares,i);
+    moves=calculateMoves(squares,i,true).concat(castleMoves);
   }else if(squares[selected]){
     if(moves.includes(i)){
+      lastMove=i;
+      if(castleMoves.includes(i)){
+        let kingPos,newKingPos,rookPos,newRookPos;
+        if(i===58){
+          //White left castle
+          kingPos=60
+          newKingPos=58
+          rookPos=56
+          newRookPos=59
+        }else if(i===62){
+          //White right castle
+          kingPos=60
+          newKingPos=62
+          rookPos=63;
+          newRookPos=61;
+        }else if(i===2){
+          //Black right castle
+          kingPos=4
+          newKingPos=2;
+          rookPos=0;
+          newRookPos=3;
+        }else if(i===6){
+          kingPos=4;
+          newKingPos=6;
+          rookPos=7;
+          newRookPos=5;
+        }
+        selected=null;
+        squares[newKingPos]=squares[kingPos]
+        squares[newKingPos].hasMoved=true;
+        squares[kingPos]=null;
+        document.getElementById(`square${newKingPos}`).innerHTML=document.getElementById(`square${kingPos}`).innerHTML;
+        document.getElementById(`square${kingPos}`).innerHTML="";
+        squares[newRookPos]=squares[rookPos];
+        squares[newRookPos].hasMoved=true;
+        squares[rookPos]=null
+        document.getElementById(`square${newRookPos}`).innerHTML=document.getElementById(`square${rookPos}`).innerHTML;
+        document.getElementById(`square${rookPos}`).innerHTML="";
+        handleTurnChange()
+        return;
+      }
       if(en_passant===i+(turn==="b"?-1*boardCols:boardCols)){
         squares[en_passant]=null;
         document.getElementById(`square${en_passant}`).innerHTML="";
@@ -118,6 +166,7 @@ function handleClick(i){
         en_passant=null;
       }
       squares[i]=squares[selected];
+      squares[i].hasMoved=true;
       squares[selected]=null;
       if(squares[i].piece==="x"){
         king_pos.set(squares[i].player.color,i);
@@ -158,6 +207,8 @@ function handleClick(i){
 
 function handleTurnChange(){
   turn=turn==="w"?"b":"w";
+  blackCheck=null;
+  whiteCheck=null;
   if(isAttacked(squares,king_pos.get(turn))){
     let canMove=false;
     for(let i=0;i<boardRows*boardCols;i++){
@@ -167,9 +218,51 @@ function handleTurnChange(){
     }
     if(!canMove){
       console.log(`${turn==="w"?"Black":"White"} checkmates ${turn==="b"?"Black":"White"}`)
+      if(turn==="b"){
+        blackCheckmate=king_pos.get(turn);
+      }else{
+        whiteCheckmate=king_pos.get(turn);
+      }
     }else{
+      if(turn==="b"){
+        blackCheck=king_pos.get(turn);
+      }else{
+        whiteCheck=king_pos.get(turn);
+      }
       console.log(`Check: ${turn==="b"?"black":"white"} to move`);
     }
+  }
+  //Computer control for black
+  /*
+  if(turn==="b"){
+    for(let i=0;i<squares.length;i++){
+      if(squares[i]?.player.color==="b"){
+        handleClick(i)
+        if(moves.length>0){
+          handleClick(moves[0])
+          break
+        }else{
+          handleRightClick();
+        }
+      }
+    }
+  }
+  */
+  if(turn==="b"){
+    let movesArr=[]
+    for(let i=0;i<squares.length;i++){
+      if(squares[i]?.player.color==="b"){
+        handleClick(i)
+        if(moves.length>0){
+          movesArr.push({square:i,to:moves.slice()})
+        }
+        handleRightClick();
+      }
+    }
+    let randSquare=movesArr[Math.floor(Math.random()*movesArr.length)]
+    let randTo=randSquare.to[Math.floor(Math.random()*randSquare.to.length)]
+    handleClick(randSquare.square)
+    handleClick(randTo)
   }
 }
 
@@ -185,6 +278,72 @@ function handleRightClick(){
   selected=null;
   moves=null;
 }
+function calculateCastleMoves(squares,index){
+  let castleMoves=[]
+  if(squares[index].piece!=="x"){
+  }else{
+    if(turn==="w"){
+      //Left castle
+      let rookIndex=index-4;
+      if(!squares[index].hasMoved&&squares[rookIndex]?.piece==="r"&&!squares[rookIndex].hasMoved){
+        let canCastle=true
+        for(let i=rookIndex+1;i<index;i++){
+          if(squares[i]!==null||isAttacked(squares,i,turn)){
+            canCastle=false;
+            break;
+          }
+        }
+        if(canCastle){
+          castleMoves.push(index-2)
+        }
+      }
+      //Right castle
+      rookIndex=index+3;
+      if(!squares[index].hasMoved&&squares[rookIndex]?.piece==="r"&&!squares[rookIndex].hasMoved){
+        let canCastle=true
+        for(let i=index+1;i<rookIndex;i++){
+          if(squares[i]!==null||isAttacked(squares,i,turn)){
+            canCastle=false;
+            break;
+          }
+        }
+        if(canCastle){
+          castleMoves.push(index+2)
+        }
+      }
+      }else{
+        //Black Right Castle
+        let rookIndex=index-4;
+        if(!squares[index].hasMoved&&squares[rookIndex]?.piece==="r"&&!squares[rookIndex].hasMoved){
+          let canCastle=true
+          for(let i=rookIndex+1;i<index;i++){
+            if(squares[i]!==null||isAttacked(squares,i,turn)){
+              canCastle=false;
+              break;
+            }
+          }
+          if(canCastle){
+            castleMoves.push(index-2)
+          }
+        }
+        //Black Left castle
+        rookIndex=index+3;
+        if(!squares[index].hasMoved&&squares[rookIndex]?.piece==="r"&&!squares[rookIndex].hasMoved){
+          let canCastle=true
+          for(let i=index+1;i<rookIndex;i++){
+            if(squares[i]!==null||isAttacked(squares,i,turn)){
+              canCastle=false;
+              break;
+            }
+          }
+          if(canCastle){
+            castleMoves.push(index+2)
+          }
+        }
+      }
+    }
+    return castleMoves;
+  }
 
 function calculateMoves(squares,index,checkRules){
   let [x,y]=numToCoord(index);
@@ -328,10 +487,10 @@ function calculateMoves(squares,index,checkRules){
   }
   return myMoves;
 }
-function isAttacked(squares,index){
+function isAttacked(squares,index,turn){
   for(let i=0;i<boardRows*boardCols;i++){
     if(i!==index){
-      if(squares[i]&&squares[i].player.color!==squares[index].player.color&&calculateMoves(squares,i,false).includes(index)){
+      if(squares[i]&&((turn&&squares[i].player.color!==turn)||(squares[index]&&squares[i].player.color!==squares[index].player.color))&&calculateMoves(squares,i,false).includes(index)){
         return true;
       }
     }
@@ -360,6 +519,23 @@ window.setInterval(function(){
     for(const i of moves){
       document.getElementById(`square${i}`).style.background="gold";
     }
+  }
+  if(whiteCheck){
+    document.getElementById(`square${whiteCheck}`).style.background="red";
+  }
+  if(blackCheck){
+    document.getElementById(`square${blackCheck}`).style.background="red";
+  }
+  if(whiteCheckmate){
+    document.getElementById(`square${whiteCheckmate}`).style.background="red";
+    document.getElementById(`square${whiteCheckmate}`).style.transform="rotate(90deg)"
+  }
+  if(blackCheckmate){
+    document.getElementById(`square${blackCheckmate}`).style.background="red";
+    document.getElementById(`square${blackCheckmate}`).style.transform="rotate(90deg)"
+  }
+  if(lastMove){
+    document.getElementById(`square${lastMove}`).style.background="orange";
   }
 },10);
 
